@@ -1,8 +1,2 @@
-# Quiz Maker requirements
-# RUN the following commands:
-'''
-    python -m venv .venv
-    source .venv/bin/activate
-    pip install -r requirements.txt
-'''
+# Python dependencies
 argon2-cffi>=23.1,<26
