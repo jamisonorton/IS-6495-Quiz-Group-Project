@@ -1,6 +1,10 @@
 # Main application file for the Quiz Maker.
 # Run this file to interact with the quiz app after running setup_db.py and import_questions.py.
+from getpass import getpass
+from argon2 import PasswordHasher
+from argon2.exceptions import VerifyMismatchError
 import QuizDB as qdb
+
 
 # QuizApp class manages all user interactions including authentication, quizzes, and admin functions
 class QuizApp:
@@ -10,6 +14,8 @@ class QuizApp:
         self.db = qdb.QuizResults()
         # Tracks the currently logged in user, None means no user is logged in
         self.current_user = None
+        # PasswordHasher handles salted Argon2id hashing and verification
+        self.password_hasher = PasswordHasher()
 
     # User Authentication
 
@@ -17,7 +23,12 @@ class QuizApp:
         # Allows a new user to create an account and automatically log them in
         print("\n=== Register ===")
         username = input("Enter a username: ")
-        password = input("Enter a password: ")
+        password = getpass("Enter a password: ")
+        confirm_password = getpass("Confirm your password: ")
+
+        if password != confirm_password:
+            print("Passwords do not match. Pleas try again.")
+            return
 
         # Checks if username already exists before inserting
         existing = self.db.fetch(username=username)
@@ -25,8 +36,11 @@ class QuizApp:
             print("Username already exists. Please try a different one.")
             return
 
+        # Hashes the password before storing it in the database
+        password_hash = self.password_hasher.hash(password)
+
         # Adds new user as a student (is_admin=0 by default)
-        self.db.add(username, password, is_admin=0)
+        self.db.add(username, password_hash, is_admin=0)
         # Automatically logs in after registering by fetching the new user record
         self.current_user = self.db.fetch(username=username)
         print(f"Welcome, {username}! You are now logged in.")
@@ -35,16 +49,27 @@ class QuizApp:
         # Verifies username and password and set current_user if successful
         print("\n=== Login ===")
         username = input("Enter your username: ")
-        password = input("Enter your password: ")
+        password = getpass("Enter your password: ")
 
         user = self.db.fetch(username=username)
         if user is None:
             print("Username not found. Please try again.")
             return
-        # user tuple: (user_id, username, password, is_admin)
-        if user[2] != password:
+
+        # user tuple: (user_id, username, password_hash, is_admin)
+        try:
+            self.password_hasher.verify(user[2], password)
+        except VerifyMismatchError:
             print("Incorrect password. Please try again.")
             return
+        except Exception:
+            print("There was a problem verifying your password.")
+
+        # Rehashes the password if Argon2 settings have changed
+        if self.password_hasher.check_needs_rehash(user[2]):
+            new_hash = self.password_hasher.hash(password)
+            self.db.update(user[0], user[1], new_hash, user[3])
+            user = self.db.fetch(username=username)
 
         # Stores the logged in user's data for use throughout the session
         self.current_user = user
@@ -194,7 +219,9 @@ class QuizApp:
                     return
                 print("Invalid input. Please enter A, B, C, or D.")
                 correct = input("Enter correct answer (A/B/C/D): ").strip().upper()
-            self.db.update_question(question_id, question, choice_a, choice_b, choice_c, choice_d, correct)
+            self.db.update_question(
+                question_id, question, choice_a, choice_b, choice_c, choice_d, correct
+            )
         except ValueError:
             # Handles case where user enters a non-integer for question ID
             print("Invalid ID. Please enter a number.")
@@ -211,7 +238,9 @@ class QuizApp:
                 print("Question ID not found.")
                 return
             # Requires confirmation before permanently deleting
-            confirm = input(f"Are you sure you want to delete question {question_id}? (y/n): ").lower()
+            confirm = input(
+                f"Are you sure you want to delete question {question_id}? (y/n): "
+            ).lower()
             if confirm == "y":
                 self.db.delete_question(question_id)
             else:
@@ -250,6 +279,7 @@ class QuizApp:
         print("\n=== Edit a User ===")
         print("(Type 'cancel' at any time to go back)\n")
         self.admin_view_users()
+
         try:
             user_id = input("Enter user ID to edit: ")
             if user_id.lower() == "cancel":
@@ -258,24 +288,47 @@ class QuizApp:
             user_id = int(user_id)
             # Verifies the user exists before prompting for new values
             existing = self.db.fetch(user_id=user_id)
+
             if existing is None:
                 print("User ID not found.")
                 return
-            username = input("Enter new username: ")
+
+            username = input(f"Enter new username [{existing[1]}]: ").strip()
             if username.lower() == "cancel":
                 print("Action cancelled.")
                 return
-            password = input("Enter new password: ")
+            if username == "":
+                username = existing[1]
+
+            print("Leave password blank to keep the current password.")
+            password = getpass("Enter new password: ")
             if password.lower() == "cancel":
                 print("Action cancelled.")
                 return
-            is_admin = input("Is this user an admin? (y/n): ").lower()
+
+            if password == "":
+                password_hash = existing[2]
+            else:
+                password_hash = self.password_hasher.hash(password)
+
+            is_admin = (
+                input(
+                    f"Is this user an admin? (y/n) [{'y' if existing[3] == 1 else 'n'}]: "
+                )
+                .strip()
+                .lower()
+            )
             if is_admin == "cancel":
                 print("Action cancelled.")
                 return
-            # Converts y/n response to integer for database storage
-            is_admin = 1 if is_admin == "y" else 0
+            if is_admin == "":
+                is_admin = existing[3]
+            else:
+                is_admin = 1 if is_admin == "y" else 0
+
             self.db.update(user_id, username, password, is_admin)
+            print("User updated successfully.")
+
         except ValueError:
             # Handles case where user enters a non-integer for user ID
             print("Invalid ID. Please enter a number.")
@@ -300,7 +353,9 @@ class QuizApp:
                 print("You cannot delete your own account.")
                 return
             # Requires confirmation before permanently deleting
-            confirm = input(f"Are you sure you want to delete user {existing[1]}? (y/n): ").lower()
+            confirm = input(
+                f"Are you sure you want to delete user {existing[1]}? (y/n): "
+            ).lower()
             if confirm == "y":
                 self.db.delete(user_id)
             else:
@@ -377,6 +432,7 @@ class QuizApp:
                         print("You cannot access this ability.")
                 else:
                     print("Invalid selection. Please try again.")
+
 
 # Creates an instance of QuizApp and start the application
 app = QuizApp()

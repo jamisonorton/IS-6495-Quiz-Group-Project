@@ -3,6 +3,7 @@
 import QuizDB as qdb
 import csv
 
+
 # Question class maps each row from the CSV file to an object with names attributes
 class Question:
     def __init__(self, row):
@@ -13,6 +14,7 @@ class Question:
         self.choice_c = row[4]
         self.choice_d = row[5]
         self.correct_answer = row[6]
+
 
 # QuizImport inherits from Questions to gain access to the database connection
 class QuizImport(qdb.Questions):
@@ -26,14 +28,16 @@ class QuizImport(qdb.Questions):
         self.questions_list = []
 
         try:
-            with open(file_name, 'r') as record:
+            with open(file_name, "r") as record:
                 csv_contents = csv.reader(record)
                 next(csv_contents)  # skip header row
                 for row in csv_contents:
                     # Creates a Question object for each row and add to the list
                     question = Question(row)
                     self.questions_list.append(question)
-            print(f"Successfully read {len(self.questions_list)} questions from {file_name}")
+            print(
+                f"Successfully read {len(self.questions_list)} questions from {file_name}"
+            )
 
         except FileNotFoundError:
             # Handles case where the CSV file cannot be found
@@ -50,15 +54,25 @@ class QuizImport(qdb.Questions):
             for item in self.questions_list:
                 try:
                     # Inserts each question into the Questions table
-                    super().get_cursor.execute("""
+                    super().get_cursor.execute(
+                        """
                         INSERT INTO Questions 
                         (question, choice_a, choice_b, choice_c, choice_d, correct_answer)
                         VALUES (?, ?, ?, ?, ?, ?);""",
-                        (item.question, item.choice_a, item.choice_b,
-                         item.choice_c, item.choice_d, item.correct_answer))
+                        (
+                            item.question,
+                            item.choice_a,
+                            item.choice_b,
+                            item.choice_c,
+                            item.choice_d,
+                            item.correct_answer,
+                        ),
+                    )
                     super().get_connection.commit()
                     # Prints first 30 characters of question to confirm it saved
-                    print(f"Saved question: {item.question_id} - {item.question[:30]}...")
+                    print(
+                        f"Saved question: {item.question_id} - {item.question[:30]}..."
+                    )
                 except Exception as e:
                     print("An error has occurred.", e)
             print("Import complete!")

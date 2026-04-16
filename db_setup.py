@@ -3,6 +3,10 @@
 # You can now run the quiz_app.py file to take and use the quiz.
 # Because QuizDB is being imported here, the script file itself does not need to be executed.
 import QuizDB as qdb
+from argon2 import PasswordHasher
+
+# Create one password hasher instance
+ph = PasswordHasher()
 
 # Creates a Users instance and resets/creates the Users table
 users = qdb.Users()
@@ -20,5 +24,6 @@ print("Database setup complete.")
 
 # Creates admin user, is_admin=1
 # Account is used to manage questions and users in the app
-users.add("admin", "admin123", is_admin=1)
+admin_password_hash = ph.hash("admin123")
+users.add("admin", admin_password_hash, is_admin=1)
 print("Admin user created.")
