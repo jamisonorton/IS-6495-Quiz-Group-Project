@@ -3,6 +3,6 @@
 '''
     python -m venv .venv
     source .venv/bin/activate
-    pip install -r requirements_argon2.txt
+    pip install -r requirements.txt
 '''
 argon2-cffi>=23.1,<26
