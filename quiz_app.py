@@ -326,7 +326,7 @@ class QuizApp:
             else:
                 is_admin = 1 if is_admin == "y" else 0
 
-            self.db.update(user_id, username, password, is_admin)
+            self.db.update(user_id, username, password_hash, is_admin)
             print("User updated successfully.")
 
         except ValueError:
@@ -388,50 +388,63 @@ class QuizApp:
                 else:
                     print("Invalid selection. Please try again.")
 
-            # If user is logged in, show the full main menu
+            # If user is logged in, show menu based on role
             else:
                 print(f"\n=== Main Menu === (Logged in as: {self.current_user[1]})")
-                print("1. Take a Quiz")
-                print("2. View My Scores")
-                print("3. Logout")
-                print("--- Admin ---")
-                print("4. Add a Question")
-                print("5. Edit a Question")
-                print("6. Delete a Question")
-                print("7. View All Questions")
-                print("8. View All Users")
-                print("9. Edit a User")
-                print("10. Delete a User")
-                choice = input("Select an option: ").strip()
 
-                if choice == "1":
-                    self.take_quiz()
-                elif choice == "2":
-                    self.view_scores()
-                elif choice == "3":
-                    self.logout()
-                elif choice in ["4", "5", "6", "7", "8", "9", "10"]:
-                    # Checks if the current user is an admin before allowing access
-                    if self.current_user[3] == 1:
-                        if choice == "4":
-                            self.admin_add_question()
-                        elif choice == "5":
-                            self.admin_edit_question()
-                        elif choice == "6":
-                            self.admin_delete_question()
-                        elif choice == "7":
-                            self.admin_view_questions()
-                        elif choice == "8":
-                            self.admin_view_users()
-                        elif choice == "9":
-                            self.admin_edit_user()
-                        elif choice == "10":
-                            self.admin_delete_user()
+                # Admin menu
+                if self.current_user[3] == 1:
+                    print("1. Take a Quiz")
+                    print("2. View My Scores")
+                    print("3. Logout")
+                    print("--- Admin ---")
+                    print("4. Add a Question")
+                    print("5. Edit a Question")
+                    print("6. Delete a Question")
+                    print("7. View All Questions")
+                    print("8. View All Users")
+                    print("9. Edit a User")
+                    print("10. Delete a User")
+                    choice = input("Select an option: ").strip()
+
+                    if choice == "1":
+                        self.take_quiz()
+                    elif choice == "2":
+                        self.view_scores()
+                    elif choice == "3":
+                        self.logout()
+                    elif choice == "4":
+                        self.admin_add_question()
+                    elif choice == "5":
+                        self.admin_edit_question()
+                    elif choice == "6":
+                        self.admin_delete_question()
+                    elif choice == "7":
+                        self.admin_view_questions()
+                    elif choice == "8":
+                        self.admin_view_users()
+                    elif choice == "9":
+                        self.admin_edit_user()
+                    elif choice == "10":
+                        self.admin_delete_user()
                     else:
-                        # Student users cannot access admin options
-                        print("You cannot access this ability.")
+                        print("Invalid selection. Please try again.")
+
+                # Standard user menu
                 else:
-                    print("Invalid selection. Please try again.")
+                    print("1. Take a Quiz")
+                    print("2. View My Scores")
+                    print("3. Logout")
+                    choice = input("Select an option: ").strip()
+
+                    if choice == "1":
+                        self.take_quiz()
+                    elif choice == "2":
+                        self.view_scores()
+                    elif choice == "3":
+                        self.logout()
+                    else:
+                        print("Invalid selection. Please try again.")
 
 
 # Creates an instance of QuizApp and start the application
